@@ -63,7 +63,7 @@ Data_t* ListGetPtr(Node* node)
     assert(node != NULL);
     return &node->data;
 }
-.
+
 Node* InsertAfter(Node* pivot, Data_t to_insert)
 {
     assert(pivot != NULL);
@@ -123,12 +123,10 @@ typedef struct {
 } TreeNode;
 
 typedef struct {
-    // Dynamic array of nodes:
     TreeNode* nodes;
     size_t size;
     size_t capacity;
 
-    // Tree root:
     node_t root_i;
 } Tree;
 
@@ -152,7 +150,7 @@ void FreeTree(Tree* tree)
     tree->nodes = NULL;
 }
 
-TreeNode* tree_get(Tree* tree, node_t node_id)
+TreeNode* TreeGet(Tree* tree, node_t node_id)
 {
     assert(tree);
     assert(node_i != NULL_NODE);
@@ -162,7 +160,7 @@ TreeNode* tree_get(Tree* tree, node_t node_id)
 
 void TransplantTree(Tree* tree, node_t transplanted_i, node_t new_i)
 {
-    TreeNode* transplanted = tree_get(tree, transplanted_i);
+    TreeNode* transplanted = TreeGet(tree, transplanted_i);
 
     if (transplanted->parent_i == NULL_NODE)
     {
@@ -170,7 +168,7 @@ void TransplantTree(Tree* tree, node_t transplanted_i, node_t new_i)
     }
     else
     {
-        TreeNode* parent = tree_get(tree, transplanted->parent_i);
+        TreeNode* parent = TreeGet(tree, transplanted->parent_i);
         if (transplanted_i == parent->lchild_i)
         {
             parent->lchild_i = new_i;
@@ -183,7 +181,7 @@ void TransplantTree(Tree* tree, node_t transplanted_i, node_t new_i)
 
     if (new_i != NULL_NODE)
     {
-        TreeNode* new = tree_get(tree, new_i);
+        TreeNode* new = TreeGet(tree, new_i);
         new->parent_i = transplanted->parent_i;
     }
 }
@@ -225,11 +223,11 @@ void FreeTreeNode(Tree* tree, node_t freed_id)
     node_t last_i = tree->size - 1U;
     if (freed_i < tree->size - 1U)
     {
-        TreeNode* last = tree_get(tree, last_i);
+        TreeNode* last = TreeGet(tree, last_i);
 
         *freed = *last;
 
-        tree_transplant(tree, last_i, freed_id);
+        TransplantTree(tree, last_i, freed_id);
     }
 
     tree->size -= 1U;
@@ -246,7 +244,7 @@ node_t SearchTreeNode(Tree* tree, key_t search_key, node_t* parent_i)
     node_t cur_i = tree->root_i;
     while (cur_i != NULL_NODE)
     {
-        TreeNode* node = tree_get(tree, cur_i);
+        TreeNode* node = TreeGet(tree, cur_i);
 
         if (search_key == node->key)
         {
@@ -267,15 +265,15 @@ node_t SearchTreeNode(Tree* tree, key_t search_key, node_t* parent_i)
     return NULL_NODE;
 }
 
-node_t tree_minimum(Tree* tree, node_t subtree_i)
+node_t MinimumInTree(Tree* tree, node_t subtree_i)
 {
     assert(subtree_i != NULL_NODE);
 
-    TreeNode* subtree = tree_get(tree, subtree_i);
+    TreeNode* subtree = TreeGet(tree, subtree_i);
     while (subtree->lchild_i != NULL_NODE)
     {
         subtree_i = subtree->lchild_i;
-        subtree = tree_get(tree, subtree_i);
+        subtree = TreeGet(tree, subtree_i);
     }
 
     return subtree_i;
@@ -287,13 +285,13 @@ bool SearchTree(Tree* tree, key_t key, value_t* res)
     assert(res);
 
     node_t parent_i = NULL_NODE;
-    node_t found_i = tree_search_node(tree, key, &parent_i);
+    node_t found_i = SearchTreeNode(tree, key, &parent_i);
     if (found_i == NULL_NODE)
     {
         return false;
     }
 
-    TreeNode* found = tree_get(tree, found_i);
+    TreeNode* found = TreeGet(tree, found_i);
     *res = found->value;
 
     return true;
@@ -302,19 +300,19 @@ bool SearchTree(Tree* tree, key_t key, value_t* res)
 
 void Set(Tree* tree, key_t key, value_t value)
 {
-    // Search by the key:
+
     node_t parent_i = NULL_NODE;
-    node_t found_i = tree_search_node(tree, key, &parent_i);
+    node_t found_i = SearchTreeNode(tree, key, &parent_i);
 
     if (found_i != NULL_NODE)
     {
-        TreeNode* found = tree_get(tree, found_i);
+        TreeNode* found = TreeGet(tree, found_i);
         found->value = value;
 
         return;
     }
 
-    node_t allocated_i = tree_node_allocate(tree);
+    node_t allocated_i = AllocateTreeNode(tree);
 
     if (tree->root_i == NULL_NODE)
     {
@@ -322,7 +320,7 @@ void Set(Tree* tree, key_t key, value_t value)
     }
     else
     {
-        TreeNode* parent = tree_get(tree, parent_i);
+        TreeNode* parent = TreeGet(tree, parent_i);
         if (key < parent->key)
         {
             parent->lchild_i = allocated_i;
@@ -333,7 +331,7 @@ void Set(Tree* tree, key_t key, value_t value)
         }
     }
 
-    TreeNode* allocated = tree_get(tree, allocated_i);
+    TreeNode* allocated = TreeGet(tree, allocated_i);
 
     allocated->parent_i = parent_i;
     allocated->key      = key;
@@ -343,14 +341,14 @@ void Set(Tree* tree, key_t key, value_t value)
 bool Remove(Tree* tree, key_t key, value_t* ret)
 {
     node_t selected_parent_i = NULL_NODE;
-    node_t selected_i = tree_search_node(tree, key, &selected_parent_i);
+    node_t selected_i = SearchTreeNode(tree, key, &selected_parent_i);
 
     if (selected_i == NULL_NODE)
     {
         return false;
     }
 
-    TreeNode* selected = GetTree(tree, selected_i);
+    TreeNode* selected = TreeGet(tree, selected_i);
 
     if (selected->lchild_i == NULL_NODE)
     {
@@ -362,28 +360,28 @@ bool Remove(Tree* tree, key_t key, value_t* ret)
     }
     else
     {
-        node_t minimum_i  = tree_minimum(tree, selected->rchild_i);
-        TreeNode* minimum = tree_get(tree, minimum_i);
+        node_t minimum_i  = MinimumInTree(tree, selected->rchild_i);
+        TreeNode* minimum = TreeGet(tree, minimum_i);
 
         if (minimum->parent_i != selected_i)
         {
             TransplantTree(tree, minimum_i, minimum->rchild_i);
 
             minimum->rchild_i = selected->rchild_i;
-            TreeNode* right = GetTree(tree, minimum->rchild_i);
+            TreeNode* right = TreeGet(tree, minimum->rchild_i);
             right->parent_i = minimum_i;
         }
 
         TransplantTree(tree, selected_i, minimum_i);
 
         minimum->lchild_i = selected->lchild_i;
-        TreeNode* left = tree_get(tree, minimum->lchild_i);
+        TreeNode* left = TreeGet(tree, minimum->lchild_i);
         left->parent_i = minimum_i;
     }
 
     *ret = selected->value;
 
-    tree_node_free(tree, selected_i);
+    FreeTreeNode(tree, selected_i);
 
     return true;
 }
